@@ -1,118 +1,134 @@
 ```mermaid
----
-config:
-  theme: dark
-  layout: fixed
----
-flowchart TB
- subgraph Environment_Flow["Environments"]
-        E2["KollaToolbox.sh"]
-        E1["Sysctl.sh"]
-        E3["Cron.sh"]
-        E4["HAProxy.sh"]
-        E4_Sub["haproxy_run.sh"]
-        E5["Keepalived.sh"]
-        E6["Memcached.sh"]
-        E7["RabbitMQ.sh"]
-        E8["Etcd.sh"]
-        E9["Redis.sh"]
-        E10["RedisSentinal.sh"]
-  end
- subgraph Nova_Flow["Nova Components"]
-        N2["Nova_scheduler.sh"]
-        N1["Placement_API.sh"]
-        N3["Nova_API.sh"]
-        N4["Nova_Conductor.sh"]
-        N5["Nova_Novncproxy.sh"]
-        N6["Nova_serialproxy.sh"]
-  end
- subgraph Neutron_Flow["Neutron Components"]
-        NU2["Neutron_LinuxBridgeagent.sh"]
-        NU1["Neutron_server.sh"]
-        NU3["Neutron_DHCP_Agent.sh"]
-        NU4["Neutron_L3_Agent.sh"]
-        NU5["Neutron_Metadata_Agent.sh"]
-  end
- subgraph Heat_Flow["Heat Components"]
-        H2["Heat_API_CFN.sh"]
-        H1["Heat_API.sh"]
-        H3["Heat_Engine.sh"]
-  end
- subgraph Manila_Flow["Manila Components"]
-        M2["Manilla_Data.sh"]
-        M1["Manilla_API.sh"]
-        M3["Manilla_Scheduler.sh"]
-        M4["Manilla_Share.sh"]
-  end
- subgraph PostInstaller["<br>"]
-    direction TB
-        PI2["VolumeRemoval.sh"]
-        PI1["MySQLPatching.sh"]
-        PI3["VolumeCreation.sh"]
-        Env["Environment.sh"]
-        Environment_Flow
-        Key["Keystone.sh"]
-        Key_Sub["fernet_push.sh"]
-        Glance["Glance.sh"]
-        Cinder["Cinder.sh"]
-        Nova["Nova.sh"]
-        Nova_Flow
-        Neutron["Neutron.sh"]
-        Neutron_Flow
-        Heat["Heat.sh"]
-        Heat_Flow
-        Horizon["Horizon.sh"]
-        Manila["Manila.sh"]
-        Manila_Flow
-  end
-    Start(("Start")) --> Installer["Installer.sh"]
-    Installer --> UpdateDocker["UpdateDockerServices.sh"]
-    UpdateDocker --> PullImages["PullWallabyImages.sh"]
-    PullImages --> PostInstaller
-    PI1 --> PI2
-    PI2 --> PI3
-    PI3 --> Env
-    E1 --> E2
-    E2 --> E3
-    E3 --> E4
-    E4 --> E4_Sub & E5
-    E5 --> E6
-    E6 --> E7
-    E7 --> E8
-    E8 --> E9
-    E9 --> E10
-    Env --> Environment_Flow
-    Environment_Flow --> Key
-    Key --> Key_Sub & Glance
-    Glance --> Cinder
-    Cinder --> Nova
-    N1 --> N2
-    N2 --> N3
-    N3 --> N4
-    N4 --> N5
-    N5 --> N6
-    Nova --> Nova_Flow
-    Nova_Flow --> Neutron
-    NU1 --> NU2
-    NU2 --> NU3
-    NU3 --> NU4
-    NU4 --> NU5
-    Neutron --> Neutron_Flow
-    Neutron_Flow --> Heat
-    H1 --> H2
-    H2 --> H3
-    Heat --> Heat_Flow
-    Heat_Flow --> Horizon
-    Horizon --> Manila
-    M1 --> M2
-    M2 --> M3
-    M3 --> M4
-    Manila_Flow --> End(("End Installation"))
+flowchart TD
+    Start([Start]) --> Installer.sh
+    Installer.sh --> UpdateDockerServices.sh
+    UpdateDockerServices.sh --> PullWallabyImages.sh
+    PullWallabyImages.sh --> PostInstaller.sh
+    PostInstaller.sh --> MySQLPatching.sh
 
-    style Environment_Flow fill:#e1f5fe,stroke:#01579b
-    style Nova_Flow fill:#fff3e0,stroke:#e65100
-    style Neutron_Flow fill:#e8f5e9,stroke:#1b5e20
-    style Heat_Flow fill:#f3e5f5,stroke:#4a148c
-    style Manila_Flow fill:#fffde7,stroke:#f57f17
-    style PostInstaller fill:#f9f9f9,stroke:none,stroke-width:2px
+    subgraph post_group [ ]
+        direction TB
+        MySQLPatching.sh --> VolumeRemoval.sh
+        VolumeRemoval.sh --> VolumeCreation.sh
+        VolumeCreation.sh --> Environment.sh
+
+        Environment.sh --> infra_group
+
+        subgraph infra_group [ ]
+            direction LR
+            Sysctl.sh --> KollaToolbox.sh --> Cron.sh --> HAProxy.sh --> Keepalived.sh --> Memcached.sh --> RabbitMQ.sh --> Etcd.sh --> Redis.sh --> RedisSentinal.sh
+        end
+
+        infra_group --> Keystone.sh
+        Keystone.sh --> Glance.sh
+        Glance.sh --> Cinder.sh
+        Cinder.sh --> Nova.sh
+
+        Nova.sh --> nova_group
+
+        subgraph nova_group [ ]
+            direction LR
+            Placement_API.sh --> Nova_scheduler.sh --> Nova_API.sh --> Nova_Conductor.sh --> Nova_Novncproxy.sh --> Nova_serialproxy.sh
+        end
+
+        nova_group --> Neutron.sh
+
+        Neutron.sh --> neutron_group
+
+        subgraph neutron_group [ ]
+            direction LR
+            Neutron_server.sh --> Neutron_LinuxBridgeagent.sh --> Neutron_DHCP_Agent.sh --> Neutron_L3_Agent.sh --> Neutron_Metadata_Agent.sh
+        end
+
+        neutron_group --> Heat.sh
+
+        Heat.sh --> heat_group
+
+        subgraph heat_group [ ]
+            direction LR
+            Heat_API.sh --> Heat_API_CFN.sh --> Heat_Engine.sh
+        end
+
+        heat_group --> Horizon.sh
+        Horizon.sh --> Manila.sh
+
+        Manila.sh --> manila_group
+
+        subgraph manila_group [ ]
+            direction LR
+            Manilla_API.sh --> Manilla_Data.sh --> Manilla_Scheduler.sh --> Manilla_Share.sh
+        end
+    end
+
+    post_group --> EndInstallation([End Installation])
+
+    %% Outer flow nodes
+    style Start fill:#4a4a8a,stroke:#2d2d6b,color:#ffffff
+    style EndInstallation fill:#4a4a8a,stroke:#2d2d6b,color:#ffffff
+    style Installer.sh fill:#5b8dd9,stroke:#3a6abf,color:#ffffff
+    style UpdateDockerServices.sh fill:#5b8dd9,stroke:#3a6abf,color:#ffffff
+    style PullWallabyImages.sh fill:#5b8dd9,stroke:#3a6abf,color:#ffffff
+    style PostInstaller.sh fill:#5b8dd9,stroke:#3a6abf,color:#ffffff
+
+    %% PostInstaller box
+    style post_group fill:#dceeee,stroke:#aabbdd,color:#000000
+
+    %% Initial
+    style MySQLPatching.sh fill:#e07b54,stroke:#c05a33,color:#ffffff
+    style VolumeRemoval.sh fill:#e07b54,stroke:#c05a33,color:#ffffff
+    style VolumeCreation.sh fill:#e07b54,stroke:#c05a33,color:#ffffff
+    style Environment.sh fill:#e07b54,stroke:#c05a33,color:#ffffff
+
+    %% Environments Grp
+    style infra_group fill:#dff0ff,stroke:#88bbdd,color:#000000
+    style Sysctl.sh fill:#3a8fc4,stroke:#2a6fa4,color:#ffffff
+    style KollaToolbox.sh fill:#3a8fc4,stroke:#2a6fa4,color:#ffffff
+    style Cron.sh fill:#3a8fc4,stroke:#2a6fa4,color:#ffffff
+    style HAProxy.sh fill:#3a8fc4,stroke:#2a6fa4,color:#ffffff
+    style Keepalived.sh fill:#3a8fc4,stroke:#2a6fa4,color:#ffffff
+    style Memcached.sh fill:#3a8fc4,stroke:#2a6fa4,color:#ffffff
+    style RabbitMQ.sh fill:#3a8fc4,stroke:#2a6fa4,color:#ffffff
+    style Etcd.sh fill:#3a8fc4,stroke:#2a6fa4,color:#ffffff
+    style Redis.sh fill:#3a8fc4,stroke:#2a6fa4,color:#ffffff
+    style RedisSentinal.sh fill:#3a8fc4,stroke:#2a6fa4,color:#ffffff
+
+    %% Keystone, Glance, Cinder, Nova, Neutron, Heat, Horizon, Manila main nodes
+    style Keystone.sh fill:#7c5cbf,stroke:#5a3a9f,color:#ffffff
+    style Glance.sh fill:#7c5cbf,stroke:#5a3a9f,color:#ffffff
+    style Cinder.sh fill:#7c5cbf,stroke:#5a3a9f,color:#ffffff
+    style Nova.sh fill:#7c5cbf,stroke:#5a3a9f,color:#ffffff
+    style Neutron.sh fill:#7c5cbf,stroke:#5a3a9f,color:#ffffff
+    style Heat.sh fill:#7c5cbf,stroke:#5a3a9f,color:#ffffff
+    style Horizon.sh fill:#7c5cbf,stroke:#5a3a9f,color:#ffffff
+    style Manila.sh fill:#7c5cbf,stroke:#5a3a9f,color:#ffffff
+
+    %% Nova group
+    style nova_group fill:#fff3e0,stroke:#f0a050,color:#000000
+    style Placement_API.sh fill:#e8873a,stroke:#c06020,color:#ffffff
+    style Nova_scheduler.sh fill:#e8873a,stroke:#c06020,color:#ffffff
+    style Nova_API.sh fill:#e8873a,stroke:#c06020,color:#ffffff
+    style Nova_Conductor.sh fill:#e8873a,stroke:#c06020,color:#ffffff
+    style Nova_Novncproxy.sh fill:#e8873a,stroke:#c06020,color:#ffffff
+    style Nova_serialproxy.sh fill:#e8873a,stroke:#c06020,color:#ffffff
+
+    %% Neutron group
+    style neutron_group fill:#e8f5e9,stroke:#80c080,color:#000000
+    style Neutron_server.sh fill:#3aaa60,stroke:#1a8a40,color:#ffffff
+    style Neutron_LinuxBridgeagent.sh fill:#3aaa60,stroke:#1a8a40,color:#ffffff
+    style Neutron_DHCP_Agent.sh fill:#3aaa60,stroke:#1a8a40,color:#ffffff
+    style Neutron_L3_Agent.sh fill:#3aaa60,stroke:#1a8a40,color:#ffffff
+    style Neutron_Metadata_Agent.sh fill:#3aaa60,stroke:#1a8a40,color:#ffffff
+
+    %% Heat group
+    style heat_group fill:#f3e8ff,stroke:#b080e0,color:#000000
+    style Heat_API.sh fill:#9b59b6,stroke:#7a3a9a,color:#ffffff
+    style Heat_API_CFN.sh fill:#9b59b6,stroke:#7a3a9a,color:#ffffff
+    style Heat_Engine.sh fill:#9b59b6,stroke:#7a3a9a,color:#ffffff
+
+    %% Manila group
+    style manila_group fill:#fff8e1,stroke:#f0cc60,color:#000000
+    style Manilla_API.sh fill:#d4a017,stroke:#b08000,color:#ffffff
+    style Manilla_Data.sh fill:#d4a017,stroke:#b08000,color:#ffffff
+    style Manilla_Scheduler.sh fill:#d4a017,stroke:#b08000,color:#ffffff
+    style Manilla_Share.sh fill:#d4a017,stroke:#b08000,color:#ffffff
 ```
